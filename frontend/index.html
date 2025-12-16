@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Book Marketplace</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' }
+  </script>
+
+</head>
+
+<body class="min-h-screen flex flex-col">
+  <div class="mesh" id="mesh"></div>
+  <div class="noise"></div>
+
+  <div id="app-navbar"></div>
+
+  <!-- HERO -->
+  <header class="relative">
+    <div class="container mx-auto max-w-6xl px-4 md:px-6 py-10 md:py-16">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+        <div class="reveal">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs"
+               style="background:var(--btnGhostBg); border:1px solid var(--panelBorder); color:var(--muted)">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            <span data-i18n="hero_badge">New arrivals every week</span>
+          </div>
+
+          <h1 class="mt-4 text-3xl md:text-5xl font-extrabold tracking-tight leading-tight">
+            <span data-i18n="hero_title_1">Find books that</span>
+            <span class="bg-gradient-to-r from-sky-300 via-emerald-300 to-fuchsia-300 bg-clip-text text-transparent" data-i18n="hero_title_2">change your mind</span>
+          </h1>
+
+          <p class="mt-3 text-base md:text-lg leading-relaxed" style="color:var(--muted)" data-i18n="hero_sub">
+            Explore curated collections, bestsellers, and hidden gems. 
+          </p>
+
+          <div class="hero-search mt-5 flex flex-col sm:flex-row gap-3">
+            <div class="relative flex-1">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2" style="color:var(--muted2)">🔎</span>
+              <input id="search-input" type="text" data-i18n-placeholder="search_placeholder" placeholder="Search by title or author..."
+                class="w-full pl-9 pr-3 py-2.5 rounded-xl outline-none focus:ring-2"
+                style="background:var(--btnGhostBg); border:1px solid var(--panelBorder); color:var(--fg); --tw-ring-color:var(--accentRing);" />
+            </div>
+            <button id="hero-search-btn" class="px-5 py-2.5 rounded-xl font-semibold transition hover:opacity-90"
+              style="background:var(--btnPrimaryBg); color:var(--btnPrimaryFg)" data-i18n="search_btn">Search</button>
+          </div>
+
+          <div class="stat-grid mt-6 grid grid-cols-3 gap-3 max-w-md text-center">
+            <div class="rounded-xl p-3" style="background:var(--btnGhostBg); border:1px solid var(--panelBorder);">
+              <div class="text-xl font-bold" id="stat-books">—</div>
+              <div class="text-xs" style="color:var(--muted2)" data-i18n="stat_books">Books</div>
+            </div>
+            <div class="rounded-xl p-3" style="background:var(--btnGhostBg); border:1px solid var(--panelBorder);">
+              <div class="text-xl font-bold">4.8★</div>
+              <div class="text-xs" style="color:var(--muted2)" data-i18n="stat_rating">Avg rating</div>
+            </div>
+            <div class="rounded-xl p-3" style="background:var(--btnGhostBg); border:1px solid var(--panelBorder);">
+              <div class="text-xl font-bold">24/7</div>
+              <div class="text-xs" style="color:var(--muted2)" data-i18n="stat_access">Access</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="reveal md:justify-self-end">
+          <div class="relative rounded-3xl p-4 md:p-6 shadow-2xl" style="background:var(--btnGhostBg); border:1px solid var(--panelBorder)">
+            <div class="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-sky-400/20 blur-2xl"></div>
+            <div class="absolute -bottom-8 -left-8 w-36 h-36 rounded-full bg-emerald-400/20 blur-2xl"></div>
+            <div class="grid grid-cols-3 gap-3">
+              <div class="aspect-[3/4] rounded-2xl" style="background:var(--btnGhostBg); border:1px solid var(--panelBorder)"></div>
+              <div class="aspect-[3/4] rounded-2xl translate-y-3" style="background:var(--btnGhostBg); border:1px solid var(--panelBorder)"></div>
+              <div class="aspect-[3/4] rounded-2xl" style="background:var(--btnGhostBg); border:1px solid var(--panelBorder)"></div>
+            </div>
+            <p class="mt-4 text-sm" style="color:var(--muted2)" data-i18n="hero_preview">Premium layout, fast browsing, smooth checkout.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- FILTER PANEL -->
+  <section class="container mx-auto max-w-6xl px-4 md:px-6">
+    <div class="reveal rounded-2xl p-4 md:p-5 shadow-xl panel"
+         style="background:var(--panel); border:1px solid var(--panelBorder)">
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+        <div class="md:col-span-4">
+          <label class="text-xs" style="color:var(--muted2)" data-i18n="filter_category">Category</label>
+          <select id="category-select" class="mt-1 w-full rounded-xl px-3 py-2 outline-none focus:ring-2"
+            style="background:var(--btnGhostBg); border:1px solid var(--panelBorder); color:var(--fg); --tw-ring-color:var(--accentRing);">
+            <option value="" data-i18n="filter_all">All Categories</option>
+          </select>
+        </div>
+
+        <div class="md:col-span-4">
+          <label class="text-xs" style="color:var(--muted2)" data-i18n="filter_sort">Sort by</label>
+          <select id="sort-select" class="mt-1 w-full rounded-xl px-3 py-2 outline-none focus:ring-2"
+            style="background:var(--btnGhostBg); border:1px solid var(--panelBorder); color:var(--fg); --tw-ring-color:var(--accentRing);">
+            <option value="createdAt-desc" data-i18n="sort_newest">Newest</option>
+            <option value="price-asc" data-i18n="sort_price_up">Price ↑</option>
+            <option value="price-desc" data-i18n="sort_price_down">Price ↓</option>
+            <option value="rating-desc" data-i18n="sort_rating">Rating</option>
+          </select>
+        </div>
+
+        <div class="md:col-span-2">
+          <label class="text-xs" style="color:var(--muted2)" data-i18n="filter_limit">Per page</label>
+          <select id="limit-select" class="mt-1 w-full rounded-xl px-3 py-2 outline-none focus:ring-2"
+            style="background:var(--btnGhostBg); border:1px solid var(--panelBorder); color:var(--fg); --tw-ring-color:var(--accentRing);">
+            <option value="8">8</option>
+            <option value="12">12</option>
+            <option value="24">24</option>
+          </select>
+        </div>
+
+        <div class="md:col-span-2 flex md:justify-end">
+          <button id="reset-btn" class="w-full md:w-auto mt-5 md:mt-0 px-4 py-2 rounded-xl text-sm font-semibold transition hover:opacity-90"
+            style="background:var(--btnGhostBg); border:1px solid var(--panelBorder); color:var(--fg)" data-i18n="reset_btn">Reset</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BOOK GRID -->
+  <main class="flex-1 container mx-auto max-w-6xl px-4 md:px-6 py-7 md:py-9">
+    <div class="flex items-center justify-between mb-4 reveal">
+      <h2 class="text-xl md:text-2xl font-bold tracking-tight" data-i18n="all_books">All books</h2>
+      <p class="text-sm" style="color:var(--muted2)" id="result-count">— results</p>
+    </div>
+
+    <div id="book-list" class="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 reveal"></div>
+
+    <div id="empty-state" class="hidden text-center py-16" style="color:var(--muted)">
+      <div class="text-5xl mb-3">📚</div>
+      <div class="font-semibold text-lg" data-i18n="empty_title">No books found</div>
+      <div class="text-sm" style="color:var(--muted2)" data-i18n="empty_sub">Try another search or filter</div>
+    </div>
+
+    <div id="pagination" class="flex justify-center items-center gap-2 mt-8 flex-wrap"></div>
+  </main>
+
+  <div id="app-footer"></div>
+
+  <div id="app-ai"></div>
+
+  <button id="to-top" class="fixed bottom-6 left-6 w-12 h-12 rounded-2xl grid place-items-center text-xl shadow-lg hidden"
+    style="background:var(--btnPrimaryBg); color:var(--btnPrimaryFg)">↑</button>
+
+  <script src="utils.js"></script>
+
+  <script>
+    (async function () {
+      await App.initCommon({
+        i18nUrl: "i18n.json" 
+      });
+
+      const API_URL = App.API_URL;
+      const qs = App.qs;
+      const qsa = App.qsa;
+      const t = App.t;
+
+      const loadCategories = async () => {
+        try {
+          const res = await fetch(`${API_URL}/categories`);
+          const data = await res.json();
+          const select = qs("#category-select");
+          select.innerHTML = `<option value="">${t("filter_all")}</option>`;
+          (data.data || []).forEach(cat => {
+            const opt = document.createElement("option");
+            opt.value = cat.id;
+            opt.textContent = cat.name;
+            select.appendChild(opt);
+          });
+        } catch(e) { console.error(e); }
+      };
+
+      window.loadBooks = async (page = 1) => {
+        qs("#empty-state").classList.add("hidden");
+
+        const params = new URLSearchParams({
+          q: qs("#search-input").value.trim(),
+          categoryId: qs("#category-select").value,
+          ...(() => {
+            const [sortBy, order] = qs("#sort-select").value.split("-");
+            return { sortBy, order };
+          })(),
+          limit: qs("#limit-select").value,
+          page
+        });
+
+        // удалить пустые параметры
+        for (const [k, v] of params.entries()) if (!v) params.delete(k);
+
+        try {
+          const res = await fetch(`${API_URL}/books?${params}`);
+          const json = await res.json();
+          renderBooks(json.data || []);
+          renderPagination(json.total || 0, page, qs("#limit-select").value);
+          const total = json.total || 0;
+          qs("#result-count").textContent = `${total} ${t("results_word")}`;
+          qs("#stat-books").textContent = total;
+        } catch(e) { console.error(e); }
+      };
+
+      const renderBooks = (books) => {
+        const container = qs("#book-list");
+        const empty = qs("#empty-state");
+
+        if(!books.length) {
+          container.innerHTML = "";
+          empty.classList.remove("hidden");
+          return;
+        }
+        empty.classList.add("hidden");
+
+        container.innerHTML = books.map((book, idx) => {
+          const cover = book.coverUrl || "https://via.placeholder.com/300x400?text=No+Image";
+          const canAdd = !!App.getToken() && book.stock > 0;
+
+          return `
+            <div class="tilt group relative rounded-2xl overflow-hidden flex flex-col reveal"
+                 style="animation-delay:${Math.min(idx*40,240)}ms">
+              <a href="book.html?id=${book.id}">
+                <div class="aspect-[3/4] overflow-hidden flex items-center justify-center p-3"
+                     style="background:var(--btnGhostBg)">
+                  <img src="${cover}" alt="${book.title}"
+                       class=" w-full h-full object-cover block" />
+                </div>
+              </a>
+
+              <div class="p-4 flex flex-col gap-2 flex-1">
+                <div class="text-xs" style="color:var(--muted2)">by ${book.author}</div>
+                <a href="book.html?id=${book.id}"
+                   class="font-semibold text-[15px] leading-snug line-clamp-2 hover:opacity-90 transition">
+                  ${book.title}
+                </a>
+                <p class="text-xs line-clamp-3 min-h-[2.8rem]" style="color:var(--muted2)">
+                  ${book.description || "No description yet."}
+                </p>
+
+                <div class="flex items-center justify-between mt-auto pt-2">
+                    <div class="text-lg font-extrabold tracking-tight">
+                      ${Number(book.price).toLocaleString()} ₸
+                    </div>
+                  <button class="px-3 py-1.5 rounded-xl text-sm font-bold transition hover:opacity-90 disabled:opacity-60" 
+                          style="background:var(--btnPrimaryBg); color:var(--btnPrimaryFg)"
+                          ${!canAdd ? "disabled" : ""}
+                          data-add="${book.id}">
+                    ${
+                      !App.getToken()
+                        ? t("login_to_add")
+                        : (book.stock > 0 ? t("add_btn") : t("out_btn"))
+                    }
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join("");
+
+        container.querySelectorAll("[data-add]").forEach(btn => {
+          btn.addEventListener("click", () => addToCart(btn.dataset.add));
+        });
+
+        App.revealNow();
+      };
+
+      const renderPagination = (total, currentPage, limit) => {
+        const container = qs("#pagination");
+        const totalPages = Math.ceil(total / limit);
+        if(totalPages <= 1) { container.innerHTML = ""; return; }
+
+        container.innerHTML = Array.from({ length: totalPages }, (_, i) => i + 1).map(i => {
+          const isActive = i === currentPage;
+          return `
+            <button class="px-3 py-1.5 rounded-xl text-sm font-semibold border transition"
+              style="background:${isActive ? 'var(--btnPrimaryBg)' : 'var(--btnGhostBg)'};
+                     color:${isActive ? 'var(--btnPrimaryFg)' : 'var(--fg)'};
+                     border-color:var(--panelBorder);"
+              onclick="loadBooks(${i})">
+              ${i}
+            </button>
+          `;
+        }).join("");
+      };
+
+      //  ADD TO CART via backend
+      const addToCart = async (bookId) => {
+        const token = App.getToken();
+        if(!token) { App.showToast(t("toast_login_required"), "error"); return; }
+
+        try {
+          const res = await fetch(`${API_URL}/cart/items`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer " + token
+            },
+            body: JSON.stringify({ bookId: Number(bookId), quantity: 1 })
+          });
+
+          const data = await res.json();
+          if (!res.ok) {
+            App.showToast(data.error || t("toast_add_failed"), "error");
+            return;
+          }
+
+          await App.updateCartCount();
+          App.showToast(t("toast_added"), "success");
+        } catch (e) {
+          console.error("addToCart error:", e);
+          App.showToast(t("toast_add_failed"), "error");
+        }
+      };
+
+      // Parallax mesh
+      App.initMeshParallax(); 
+
+      // Scroll to top
+      const toTop = qs("#to-top");
+      window.addEventListener("scroll", () => toTop.classList.toggle("hidden", window.scrollY < 600));
+      toTop.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+
+      // Фильтры/поиск
+      qsa("#search-input, #category-select, #sort-select, #limit-select").forEach(el => {
+        el?.addEventListener("change", () => loadBooks(1));
+      });
+      qs("#reset-btn")?.addEventListener("click", () => {
+        qs("#search-input").value = "";
+        qs("#category-select").value = "";
+        qs("#sort-select").value = "createdAt-desc";
+        qs("#limit-select").value = "8";
+        loadBooks(1);
+      });
+      qs("#search-input")?.addEventListener("keypress", e => e.key === "Enter" && loadBooks(1));
+      qs("#hero-search-btn")?.addEventListener("click", () => loadBooks(1));
+
+      // Init data
+      await loadCategories();
+      await loadBooks(1);
+    })();
+  </script>
+</body>
+</html>

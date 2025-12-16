@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title data-i18n="book_details_page_title">Book Details - Book Marketplace</title>
+
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' }
+  </script>
+</head>
+
+<body class="min-h-screen flex flex-col">
+  <div class="mesh" id="mesh"></div>
+  <div class="noise"></div>
+
+  <div id="app-navbar"></div>
+
+  <!-- MAIN -->
+  <main class="flex-1 container mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-8" id="book-container">
+    <div id="skeleton" class="grid grid-cols-1 md:grid-cols-12 gap-6 animate-pulse">
+      <div class="md:col-span-5 card rounded-2xl overflow-hidden">
+        <div class="aspect-[3/4]" style="background:var(--btnGhostBg)"></div>
+      </div>
+      <div class="md:col-span-7 space-y-3">
+        <div class="h-6 w-2/3 rounded" style="background:var(--btnGhostBg)"></div>
+        <div class="h-4 w-1/3 rounded" style="background:var(--btnGhostBg)"></div>
+        <div class="h-4 w-1/2 rounded" style="background:var(--btnGhostBg)"></div>
+        <div class="h-28 w-full rounded" style="background:var(--btnGhostBg)"></div>
+        <div class="h-10 w-40 rounded" style="background:var(--btnGhostBg)"></div>
+      </div>
+    </div>
+  </main>
+
+  <div id="app-footer"></div>
+
+  <div id="app-ai"></div>
+
+  <button id="to-top" class="fixed bottom-6 left-6 w-12 h-12 rounded-2xl grid place-items-center text-xl shadow-lg "
+    style="background:var(--btnPrimaryBg); color:var(--btnPrimaryFg)">↑</button>
+
+  <script src="utils.js"></script>
+
+  <script>
+    (async function () {
+      await App.initCommon({ i18nUrl: "i18n.json" });
+
+      const API_URL = App.API_URL;
+      const qs = App.qs;
+      const t = App.t;
+
+      /*AUTH*/
+      function ensureAuth(redirect=true) {
+        if (!App.getToken()) {
+          if (redirect) {
+            App.showToast(t("toast_login_required") || t("cart_login_required"), "error");
+            location.href = "login.html";
+          }
+          return false;
+        }
+        return true;
+      }
+
+      async function addToCartBackend(bookId, quantity) {
+        if (!ensureAuth(true)) return;
+
+        const token = App.getToken();
+        try {
+          const res = await fetch(`${API_URL}/cart/items`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer " + token
+            },
+            body: JSON.stringify({ bookId, quantity })
+          });
+
+          const json = await res.json().catch(()=> ({}));
+          if (!res.ok) throw new Error(json.error || "Add failed");
+
+          App.showToast(t("toast_added") || "Added to cart", "success");
+          App.updateCartCount();
+        } catch (e) {
+          console.error(e);
+          App.showToast(e.message || t("toast_add_failed") || "Failed to add", "error");
+        }
+      }
+
+      /*LOAD BOOK*/
+      async function loadBook() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const id = urlParams.get("id");
+        const container = qs("#book-container");
+
+        if (!id) {
+          container.innerHTML = `<div class="panel rounded-2xl p-6" data-i18n="book_not_found">${t("book_not_found")}</div>`;
+          App.applyLang(App.currentLang);
+          return;
+        }
+
+        try {
+          const res = await fetch(`${API_URL}/books/${id}`);
+          const data = await res.json();
+
+          if (!res.ok) {
+            container.innerHTML = `<div class="panel rounded-2xl p-6">${data.error || t("book_not_found")}</div>`;
+            return;
+          }
+
+          renderBook(data.data);
+        } catch (err) {
+          console.error(err);
+          container.innerHTML = `<div class="panel rounded-2xl p-6" data-i18n="book_error_loading">${t("book_error_loading")}</div>`;
+          App.applyLang(App.currentLang);
+        }
+      }
+
+      function renderBook(book) {
+        qs("#skeleton")?.remove();
+
+        const cover = book.coverUrl || "https://via.placeholder.com/400x600?text=No+Image";
+        const price = Number(book.price) || 0;
+
+        const container = qs("#book-container");
+        container.innerHTML = `
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8 reveal">
+
+            <!-- Cover -->
+            <div class="md:col-span-5">
+              <div class="card rounded-2xl overflow-hidden shadow-2xl">
+                <div class="aspect-[3/4] bg-black/20">
+                  <img src="${cover}" alt="${book.title}" class="w-full h-full object-cover"/>
+                </div>
+              </div>
+            </div>
+
+            <!-- Info -->
+            <div class="md:col-span-7 space-y-4">
+
+              <div class="flex flex-wrap items-center gap-2">
+                ${
+                  book.category?.name
+                    ? `<span class="badge badge-blue">${book.category.name}</span>`
+                    : `<span class="badge" data-i18n="book_uncategorized">${t("book_uncategorized")}</span>`
+                }
+                ${book.rating ? `<span class="badge badge-yellow">⭐ ${book.rating.toFixed(1)}</span>` : ""}
+
+                ${
+                  book.stock > 0
+                    ? `<span class="badge badge-green">
+                         <span data-i18n="book_in_stock">${t("book_in_stock")}</span> ${book.stock}
+                       </span>`
+                    : `<span class="badge badge-red" data-i18n="book_out_of_stock">${t("book_out_of_stock")}</span>`
+                }
+              </div>
+
+              <h1 class="text-2xl md:text-4xl font-extrabold tracking-tight">
+                ${book.title}
+              </h1>
+
+              <div class="text-sm md:text-base" style="color:var(--muted)">
+                <span data-i18n="book_by">${t("book_by")}</span>:
+                <span class="font-semibold">${book.author}</span>
+              </div>
+
+              ${
+                book.description
+                  ? `<p class="leading-relaxed text-sm md:text-base" style="color:var(--muted)">
+                       ${book.description}
+                     </p>`
+                  : `<p class="text-sm" style="color:var(--muted2)" data-i18n="book_no_desc">${t("book_no_desc")}</p>`
+              }
+
+              <!-- Price + Buy -->
+              <div class="fixed panel rounded-2xl p-4 md:p-5 shadow-xl sticky top-20 space-y-3">
+                <div class="flex items-center justify-between">
+                  <div class="text-sm" style="color:var(--muted2)" data-i18n="book_price_label">${t("book_price_label")}</div>
+                  <div class="text-2xl font-extrabold tracking-tight">
+                    ${price.toLocaleString()} ₸
+                  </div>
+                </div>
+
+                <div class="flex items-center justify-between gap-3">
+                  <div class="text-sm" style="color:var(--muted2)" data-i18n="book_qty_label">${t("book_qty_label")}</div>
+                  <div class="flex items-center gap-2">
+                    <button id="qty-minus" class="btn-ghost w-10 h-10 grid place-items-center">−</button>
+                    <input id="qty-input" type="number" min="1" max="${book.stock}" value="1"
+                      class="inp w-20 text-center !py-2"/>
+                    <button id="qty-plus" class="btn-ghost w-10 h-10 grid place-items-center">+</button>
+                  </div>
+                </div>
+
+                <div class="flex items-center justify-between text-sm">
+                  <div style="color:var(--muted2)" data-i18n="book_total_label">${t("book_total_label")}</div>
+                  <div class="font-extrabold text-lg" id="total-price">
+                    ${price.toLocaleString()} ₸
+                  </div>
+                </div>
+
+                <button id="add-btn"
+                  class="btn-primary w-full ${book.stock<=0 ? "opacity-50 cursor-not-allowed" : ""}"
+                  ${book.stock<=0 ? "disabled" : ""}
+                  data-i18n="book_add_to_cart">
+                  ${t("book_add_to_cart")}
+                </button>
+
+                <div class="text-xs text-center" style="color:var(--muted2)" data-i18n="book_secure_note">
+                  ${t("book_secure_note")}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        const qtyInput = qs("#qty-input");
+        const minus = qs("#qty-minus");
+        const plus = qs("#qty-plus");
+        const addBtn = qs("#add-btn");
+        const totalEl = qs("#total-price");
+
+        function clampQty(v){
+          v = Number(v || 1);
+          if (v < 1) v = 1;
+          if (book.stock > 0 && v > book.stock) v = book.stock;
+          return v;
+        }
+        function updateTotal(){
+          const qty = clampQty(qtyInput.value);
+          qtyInput.value = qty;
+          const total = price * qty;
+          totalEl.textContent = total.toLocaleString() + " ₸";
+        }
+
+        minus.addEventListener("click", ()=>{
+          qtyInput.value = clampQty(Number(qtyInput.value||1)-1);
+          updateTotal();
+        });
+        plus.addEventListener("click", ()=>{
+          qtyInput.value = clampQty(Number(qtyInput.value||1)+1);
+          updateTotal();
+        });
+        qtyInput.addEventListener("input", updateTotal);
+
+        addBtn.addEventListener("click", ()=>{
+          const qty = clampQty(qtyInput.value);
+          if (qty > 0) addToCartBackend(book.id, qty);
+        });
+
+        updateTotal();
+
+        requestAnimationFrame(()=>{
+          container.querySelector(".reveal")?.classList.add("in");
+        });
+
+        App.applyLang(App.currentLang);
+      }
+
+     App.initMeshParallax(); 
+
+
+      // Scroll to top
+      const toTop = qs("#to-top");
+      window.addEventListener("scroll", () => toTop.classList.toggle("hidden", window.scrollY < 600));
+      toTop.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+
+      loadBook();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title data-i18n="cart_title">Your Cart - Book Marketplace</title>
+
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' }
+  </script>
+</head>
+
+<body class="min-h-screen flex flex-col">
+  <div class="mesh" id="mesh"></div>
+  <div class="noise"></div>
+
+  <div id="app-navbar"></div>
+
+  <!-- MAIN -->
+  <main class="flex-1 container mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-8 space-y-6">
+    <section class="reveal flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div>
+        <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight" data-i18n="cart_title">
+          Shopping Cart
+        </h1>
+        <p class="text-sm md:text-base" style="color:var(--muted2)" data-i18n="cart_sub">
+          Review items before checkout.
+        </p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <button id="clear-cart" class="btn-ghost text-sm" data-i18n="cart_clear">
+          Clear cart
+        </button>
+      </div>
+    </section>
+
+<section class="grid grid-cols-1 md:grid-cols-12 lg:grid-cols-12 gap-6">
+
+      <div class="md:col-span-7 lg:col-span-8 space-y-3 order-1" id="cart-container"></div>
+
+  <aside class="md:col-span-5 lg:col-span-4 h-fit md:sticky md:top-20 lg:sticky lg:top-20 order-2">
+        <div id="cart-summary" class="panel rounded-2xl p-4 md:p-5 shadow-xl hidden space-y-4 reveal">
+          <div class="flex items-center justify-between">
+            <div class="font-bold text-lg" data-i18n="cart_summary_title">Order summary</div>
+            <span class="badge badge-green" id="items-count" data-i18n="cart_items_count_word">0 items</span>
+          </div>
+
+          <div class="space-y-2 text-sm" style="color:var(--muted)">
+            <div class="flex justify-between">
+              <span data-i18n="cart_subtotal_selected">Subtotal (selected)</span>
+              <span id="cart-subtotal">—</span>
+            </div>
+            <div class="flex justify-between">
+              <span data-i18n="cart_delivery">Delivery</span>
+              <span id="cart-delivery" data-i18n="cart_delivery_free">Free</span>
+            </div>
+            <div class="flex justify-between">
+              <span data-i18n="cart_tax_5">Tax (5%)</span>
+              <span id="cart-tax">—</span>
+            </div>
+          </div>
+
+          <div class="h-px" style="background:var(--panelBorder)"></div>
+
+          <div class="flex justify-between text-lg font-extrabold">
+            <span data-i18n="cart_total_selected">Total (selected)</span>
+            <span id="cart-total"></span>
+          </div>
+
+          <a id="checkout-btn" href="checkout.html" class="btn-primary w-full text-center block"
+             data-i18n="cart_checkout">
+            Proceed to Checkout
+          </a>
+
+          <p class="text-xs text-center" style="color:var(--muted2)" data-i18n="cart_secure_note">
+            Secure payments · 7-day return policy
+          </p>
+        </div>
+
+        <div id="empty-side" class="panel rounded-2xl p-5 text-sm hidden reveal"
+             style="color:var(--muted)" data-i18n="cart_pick_hint">
+          Pick something from catalog and it will appear here.
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <div id="app-footer"></div>
+
+  <div id="app-ai"></div>
+
+  <button id="to-top" class="fixed bottom-6 left-6 w-12 h-12 rounded-2xl grid place-items-center text-xl shadow-lg hidden"
+    style="background:var(--btnPrimaryBg); color:var(--btnPrimaryFg)">↑</button>
+
+  <script src="utils.js"></script>
+  <script>
+    (async function () {
+      await App.initCommon({ i18nUrl: "i18n.json" });
+
+      const API_URL = App.API_URL;
+      const qs = App.qs;
+      const t = App.t;
+
+      /*AUTH*/
+      function ensureAuth() {
+        if (!App.getToken()) {
+          App.showToast(t("cart_login_required"), "error");
+          location.href = "login.html";
+          return false;
+        }
+        return true;
+      }
+
+      /*CART LOGIC*/
+      let cartLoadVersion = 0;
+      let currentCartItems = [];
+      const selectedIds = new Set();
+
+      async function fetchCart(){
+        const token = App.getToken();
+        const res = await fetch(`${API_URL}/cart`, {
+          headers: { "Authorization": "Bearer " + token }
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || "Failed to load cart");
+        return json.data || [];
+      }
+
+      function recomputeTotals(){
+        const summary = qs("#cart-summary");
+        const checkoutBtn = qs("#checkout-btn");
+
+        let subtotal = 0;
+        let totalItems = 0;
+        let selectedCount = 0;
+
+        for (const ci of currentCartItems) {
+          const book = ci.book;
+          if (!book) continue;
+          if (!selectedIds.has(book.id)) continue;
+
+          const line = Number(book.price) * ci.quantity;
+          subtotal += line;
+          totalItems += ci.quantity;
+          selectedCount++;
+        }
+
+        const tax = subtotal * 0.05;
+        const total = subtotal + tax;
+
+        qs("#cart-subtotal").textContent = `${subtotal.toLocaleString()} ₸`;
+        qs("#cart-tax").textContent = `${tax.toLocaleString()} ₸`;
+        qs("#cart-total").textContent = `${total.toLocaleString()} ₸`;
+
+        qs("#items-count").textContent = `${totalItems} ${t("cart_items_count_word")}`;
+
+        const disable = selectedCount === 0;
+        checkoutBtn.classList.toggle("pointer-events-none", disable);
+        checkoutBtn.classList.toggle("opacity-60", disable);
+
+        App.updateCartCount();
+        if (!summary.classList.contains("hidden")) summary.classList.add("in");
+      }
+
+      async function loadCart() {
+        const myVersion = ++cartLoadVersion;
+        const container = qs("#cart-container");
+        const summary = qs("#cart-summary");
+        const emptySide = qs("#empty-side");
+
+        container.innerHTML = Array.from({length: 3}).map(()=>`
+          <div class="card rounded-2xl p-4 flex gap-4 animate-pulse">
+            <div class="w-20 h-28 rounded-xl" style="background:var(--btnGhostBg)"></div>
+            <div class="flex-1 space-y-2">
+              <div class="h-4 w-2/3 rounded" style="background:var(--btnGhostBg)"></div>
+              <div class="h-3 w-1/3 rounded" style="background:var(--btnGhostBg)"></div>
+              <div class="h-8 w-40 rounded mt-2" style="background:var(--btnGhostBg)"></div>
+            </div>
+          </div>
+        `).join("");
+
+        let cartItems = [];
+        try {
+          cartItems = await fetchCart();
+        } catch(e){
+          console.error(e);
+          App.showToast(t("cart_load_failed"), "error");
+          cartItems = [];
+        }
+
+        if (myVersion !== cartLoadVersion) return;
+
+        currentCartItems = cartItems;
+        container.innerHTML = "";
+
+        if (cartItems.length === 0) {
+          summary.classList.add("hidden");
+          emptySide.classList.remove("hidden");
+
+          container.innerHTML = `
+            <div class="min-h-[60vh] grid place-items-center reveal in">
+              <div class="panel rounded-3xl p-10 text-center max-w-md w-full">
+                <div class="text-6xl mb-3">🛒</div>
+                <div class="text-2xl font-extrabold mb-2" data-i18n="cart_empty_title">${t("cart_empty_title")}</div>
+                <div class="text-sm mb-5" style="color:var(--muted2)" data-i18n="cart_empty_sub">${t("cart_empty_sub")}</div>
+                <a href="index.html" class="btn-primary inline-block px-6" data-i18n="cart_go_catalog">${t("cart_go_catalog")}</a>
+              </div>
+            </div>
+          `;
+          App.applyLang(App.currentLang);
+          App.updateCartCount();
+          return;
+        }
+
+        summary.classList.remove("hidden");
+        emptySide.classList.add("hidden");
+
+        if (selectedIds.size === 0) {
+          cartItems.forEach(ci => ci.book && selectedIds.add(ci.book.id));
+        }
+
+        for (const ci of cartItems) {
+          const book = ci.book;
+          if (!book) continue;
+
+          const cover = book.coverUrl || "https://via.placeholder.com/120x160?text=No+Image";
+          const div = document.createElement("div");
+
+          div.className = "card rounded-2xl p-4 md:p-5 flex flex-col sm:flex-row gap-4 reveal";
+
+          div.innerHTML = `
+            <!--  responsive inner layout -->
+            <div class="flex flex-col sm:flex-row sm:items-start gap-3 w-full">
+
+              <label class="mt-1 flex items-center gap-2 cursor-pointer select-none order-1 sm:order-none">
+                <input type="checkbox" data-select="${book.id}" class="accent-sky-400 w-5 h-5"
+                       ${selectedIds.has(book.id) ? "checked" : ""}>
+              </label>
+
+              <!--  responsive image -->
+              <img src="${cover}" alt="${book.title}"
+                class="w-full sm:w-24 md:w-28 h-48 sm:h-36 md:h-40 object-cover rounded-xl shadow order-2 sm:order-none">
+
+              <div class="flex-1 flex flex-col gap-2 order-3 sm:order-none">
+
+                <!--  title + remove responsive -->
+                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
+                  <div>
+                    <a href="book.html?id=${book.id}" class="font-bold text-lg leading-snug line-clamp-2 hover:underline">
+                      ${book.title}
+                    </a>
+                    <div class="text-sm" style="color:var(--muted2)">by ${book.author}</div>
+                  </div>
+
+                  <button class="btn-danger h-fit" data-remove="${book.id}" data-i18n="cart_remove">
+                    ${t("cart_remove")}
+                  </button>
+                </div>
+
+                <div class="text-sm flex items-center gap-2" style="color:var(--muted)">
+                  <span>${Number(book.price).toLocaleString()} ₸</span>
+                  <span style="color:var(--muted2)" data-i18n="cart_price_each">
+                    ${t("cart_price_each")}
+                  </span>
+                </div>
+
+                <!--  qty + line responsive -->
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-1">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm" style="color:var(--muted2)" data-i18n="cart_qty">
+                      ${t("cart_qty")}
+                    </span>
+                    <div class="flex items-center gap-1">
+                      <button class="btn-ghost w-9 h-9 grid place-items-center" data-minus="${book.id}">−</button>
+                      <input id="qty-${book.id}" type="number" min="1" class="inp w-16 text-center !py-2"
+                        value="${ci.quantity}">
+                      <button class="btn-ghost w-9 h-9 grid place-items-center" data-plus="${book.id}">+</button>
+                    </div>
+                  </div>
+
+                  <div class="text-xs font-semibold px-3 py-1 rounded-full w-fit"
+                       style="background:var(--btnGhostBg); color:var(--muted)">
+                    <span data-i18n="cart_line">${t("cart_line")}</span>
+                    ${(Number(book.price) * ci.quantity).toLocaleString()} ₸
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+
+          div.querySelector(`[data-remove="${book.id}"]`).onclick = () => removeFromCart(book.id);
+
+          div.querySelector(`[data-select="${book.id}"]`).onchange = (e) => {
+            if (e.target.checked) selectedIds.add(book.id);
+            else selectedIds.delete(book.id);
+            recomputeTotals();
+          };
+
+          const qtyInput = div.querySelector(`#qty-${book.id}`);
+          div.querySelector(`[data-minus="${book.id}"]`).onclick = () => {
+            const v = Math.max(1, Number(qtyInput.value||1)-1);
+            qtyInput.value = v;
+            updateQuantity(book.id, v);
+          };
+          div.querySelector(`[data-plus="${book.id}"]`).onclick = () => {
+            const v = Number(qtyInput.value||1)+1;
+            qtyInput.value = v;
+            updateQuantity(book.id, v);
+          };
+          qtyInput.onchange = () => {
+            let v = parseInt(qtyInput.value);
+            if (!v || v <= 0) { removeFromCart(book.id); return; }
+            qtyInput.value = v;
+            updateQuantity(book.id, v);
+          };
+
+          container.appendChild(div);
+          requestAnimationFrame(()=>div.classList.add("in"));
+        }
+
+        App.applyLang(App.currentLang);
+        recomputeTotals();
+      }
+
+      async function removeFromCart(bookId) {
+        const token = App.getToken();
+        try {
+          const res = await fetch(`${API_URL}/cart/items/${bookId}`, {
+            method: "DELETE",
+            headers: { "Authorization": "Bearer " + token }
+          });
+          const json = await res.json().catch(()=> ({}));
+          if (!res.ok) throw new Error(json.error || "Remove failed");
+
+          selectedIds.delete(bookId);
+          App.showToast(t("cart_removed_toast"), "success");
+          loadCart();
+        } catch(e){
+          console.error(e);
+          App.showToast(t("cart_remove_failed"), "error");
+        }
+      }
+
+      async function updateQuantity(bookId, qty) {
+        const token = App.getToken();
+        try {
+          const res = await fetch(`${API_URL}/cart/items/${bookId}`, {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer " + token
+            },
+            body: JSON.stringify({ quantity: qty })
+          });
+          const json = await res.json().catch(()=> ({}));
+          if (!res.ok) throw new Error(json.error || "Update failed");
+          loadCart();
+        } catch(e){
+          console.error(e);
+          App.showToast(t("cart_update_failed"), "error");
+        }
+      }
+
+      qs("#clear-cart").addEventListener("click", async ()=>{
+        const token = App.getToken();
+        try {
+          const res = await fetch(`${API_URL}/cart`, {
+            method: "DELETE",
+            headers: { "Authorization": "Bearer " + token }
+          });
+          const json = await res.json().catch(()=> ({}));
+          if (!res.ok) throw new Error(json.error || "Clear failed");
+
+          selectedIds.clear();
+          App.showToast(t("cart_cleared_toast"), "success");
+          loadCart();
+        } catch(e){
+          console.error(e);
+          App.showToast(t("cart_clear_failed"), "error");
+        }
+      });
+
+      const toTop = qs("#to-top");
+      window.addEventListener("scroll", () => toTop.classList.toggle("hidden", window.scrollY < 600));
+      toTop.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+
+      if (ensureAuth()) loadCart();
+    })();
+  </script>
+</body>
+</html>

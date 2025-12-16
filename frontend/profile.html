@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title data-i18n="profile_title">Profile - Book Marketplace</title>
+
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' }
+  </script>
+</head>
+
+<body class="min-h-screen flex flex-col">
+  <div class="mesh" id="mesh"></div>
+  <div class="noise"></div>
+
+  <!-- COMMON NAVBAR -->
+  <div id="app-navbar"></div>
+
+  <!-- MAIN -->
+  <main class="flex-1 container mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-8 space-y-6">
+    <!-- Header -->
+    <section class="reveal flex items-center justify-between gap-3">
+      <div>
+        <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight" data-i18n="profile_header_title">
+          My Profile
+        </h1>
+        <p class="text-sm md:text-base" style="color:var(--muted2)" data-i18n="profile_header_sub">
+          Account & orders overview.
+        </p>
+      </div>
+      <button id="logout-top" class="btn-ghost text-sm" data-i18n="profile_logout"></button>
+    </section>
+
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <!-- LEFT: profile card -->
+  <aside class="lg:col-span-4 h-fit lg:sticky lg:top-20 self-start reveal">
+        <div id="profile-info" class="panel rounded-2xl p-4 md:p-5 shadow-xl space-y-3">
+          <!-- skeleton -->
+          <div class="animate-pulse space-y-3">
+            <div class="h-5 w-2/3 rounded" style="background:var(--btnGhostBg)"></div>
+            <div class="h-4 w-1/2 rounded" style="background:var(--btnGhostBg)"></div>
+            <div class="h-4 w-1/3 rounded" style="background:var(--btnGhostBg)"></div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- RIGHT: orders -->
+      <div class="lg:col-span-8 space-y-4 reveal">
+        <div class="panel rounded-2xl p-4 md:p-5 flex items-center justify-between">
+          <h2 class="text-xl font-extrabold tracking-tight" data-i18n="profile_orders_title">My Orders</h2>
+          <div class="flex items-center gap-2">
+            <select id="order-filter" class="btn-ghost text-xs">
+              <option value="ALL" data-i18n="profile_filter_all">All</option>
+              <option value="PENDING" data-i18n="profile_filter_pending">Pending</option>
+              <option value="PAID" data-i18n="profile_filter_paid">Paid</option>
+              <option value="SHIPPED" data-i18n="profile_filter_shipped">Shipped</option>
+              <option value="CANCELLED" data-i18n="profile_filter_cancelled">Cancelled</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="orders-container" class="space-y-3"></div>
+
+        <div id="orders-empty" class="hidden panel rounded-2xl p-8 text-center">
+          <div class="text-5xl mb-2">📦</div>
+          <div class="text-lg font-bold" data-i18n="profile_no_orders_title">No orders yet</div>
+          <div class="text-sm mt-1 mb-4" style="color:var(--muted2)" data-i18n="profile_no_orders_sub">
+            Once you buy a book, it will show up here.
+          </div>
+          <a href="index.html" class="btn-primary inline-block" data-i18n="profile_go_catalog">Go to catalog</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- COMMON FOOTER -->
+  <div id="app-footer"></div>
+
+  <!-- COMMON AI -->
+  <div id="app-ai"></div>
+
+  <!-- Scroll-to-top FAB -->
+  <button id="to-top" class="fixed bottom-6 left-6 w-12 h-12 rounded-2xl grid place-items-center text-xl shadow-lg hidden"
+    style="background:var(--btnPrimaryBg); color:var(--btnPrimaryFg)">↑</button>
+
+  <!--  COMMON UTILS -->
+  <script src="utils.js"></script>
+
+  <!-- PAGE-SPECIFIC JS -->
+  <script>
+    (async function () {
+      await App.initCommon({ i18nUrl: "i18n.json" });
+
+      const API_URL = App.API_URL;
+      const qs = App.qs;
+      const t = App.t;
+
+      function ensureAuth() {
+        if (!App.getToken()) {
+          App.showToast(t("profile_login_required"), "error");
+          setTimeout(() => { location.href = "login.html"; }, 900);
+          return false;
+        }
+        return true;
+      }
+
+      function logout(){
+        localStorage.removeItem("token");
+        App.showToast(t("profile_logged_out"), "success");
+        setTimeout(()=>location.href="index.html", 600);
+      }
+
+      qs("#logout-top")?.addEventListener("click", logout);
+
+      /*PROFILE*/
+      async function loadProfile() {
+        try {
+          const res = await fetch(`${API_URL}/users/me`, {
+            headers: { "Authorization": "Bearer " + App.getToken() }
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Unauthorized");
+
+          const user = data.data || data.user || data?.data?.user;
+          if (!user) throw new Error("User payload not found");
+
+          const initials = (user.name || user.email || "U").trim()[0].toUpperCase();
+
+          const infoDiv = qs("#profile-info");
+          infoDiv.innerHTML = `
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-xl grid place-items-center font-extrabold text-lg"
+                   style="background:var(--btnGhostBg); border:1px solid var(--panelBorder)">
+                ${initials}
+              </div>
+              <div class="min-w-0">
+                <div class="font-extrabold text-lg truncate">${user.name || "No name"}</div>
+                <div class="text-sm truncate" style="color:var(--muted2)">${user.email}</div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 pt-2 text-sm">
+              <div class="card rounded-xl p-3">
+                <div class="text-xs" style="color:var(--muted2)" data-i18n="profile_role">${t("profile_role")}</div>
+                <div class="font-bold">${user.role || "USER"}</div>
+              </div>
+              <div class="card rounded-xl p-3">
+                <div class="text-xs" style="color:var(--muted2)" data-i18n="profile_joined">${t("profile_joined")}</div>
+                <div class="font-bold">${user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "-"}</div>
+              </div>
+            </div>
+
+            <div class="text-xs pt-1" style="color:var(--muted2)" data-i18n="profile_tip">
+              ${t("profile_tip")}
+            </div>
+          `;
+
+          App.applyLang(App.currentLang);
+        } catch (err) {
+          console.error(err);
+          App.showToast(t("profile_profile_load_failed"), "error");
+        }
+      }
+
+      /*ORDERS*/
+      let cachedOrders = [];
+
+      function statusBadge(status){
+        const map = {
+          PENDING: "badge badge-pending",
+          PAID: "badge badge-paid",
+          SHIPPED: "badge badge-shipped",
+          CANCELLED: "badge badge-cancelled"
+        };
+        return map[status] || "badge";
+      }
+      function statusLabel(status){
+        return t("order_status_" + status) || status;
+      }
+
+      async function loadOrders() {
+        const container = qs("#orders-container");
+        container.innerHTML = `
+          <div class="card rounded-2xl p-4 animate-pulse space-y-3">
+            <div class="h-4 w-1/3 rounded" style="background:var(--btnGhostBg)"></div>
+            <div class="h-3 w-2/3 rounded" style="background:var(--btnGhostBg)"></div>
+            <div class="h-10 w-full rounded" style="background:var(--btnGhostBg)"></div>
+          </div>
+        `;
+
+        try {
+          const res = await fetch(`${API_URL}/orders/my-orders`, {
+            headers: { "Authorization": "Bearer " + App.getToken() }
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Failed to fetch orders");
+
+          cachedOrders = data.data || data.orders || data?.data?.orders || [];
+          renderOrders();
+        } catch (err) {
+          console.error(err);
+          App.showToast(t("profile_orders_load_failed"), "error");
+          cachedOrders = [];
+          renderOrders();
+        }
+      }
+
+      function renderOrders(){
+        const container = qs("#orders-container");
+        const empty = qs("#orders-empty");
+        const filter = qs("#order-filter").value;
+
+        let orders = cachedOrders.slice();
+        if (filter !== "ALL") orders = orders.filter(o => o.status === filter);
+
+        container.innerHTML = "";
+        if (!orders.length) {
+          empty.classList.remove("hidden");
+          return;
+        }
+        empty.classList.add("hidden");
+
+        orders.forEach(order => {
+          const canCancel = ["PENDING","PAID"].includes(order.status);
+          const items = order.items || order.orderItems || [];
+
+          const itemsHtml = items.map(item => {
+            const bookTitle = item.book?.title || item.title || "Book";
+            return `
+              <li class="flex justify-between gap-3 text-sm">
+                <span class="truncate">${bookTitle}</span>
+                <span class="whitespace-nowrap" style="color:var(--muted2)">x${item.quantity || 1}</span>
+              </li>
+            `;
+          }).join("");
+
+          const total = Number(order.totalPrice || order.total || 0);
+
+          const card = document.createElement("div");
+          card.className = "panel rounded-2xl p-4 md:p-5 shadow-xl reveal";
+          card.innerHTML = `
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div class="space-y-1">
+                <div class="flex items-center gap-2">
+                  <div class="font-extrabold">Order #${order.id}</div>
+                  <span class="${statusBadge(order.status)}">${statusLabel(order.status)}</span>
+                </div>
+                <div class="text-sm" style="color:var(--muted2)">
+                  ${order.createdAt ? new Date(order.createdAt).toLocaleString() : ""}
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between md:justify-end gap-3">
+                <div class="text-right">
+                  <div class="text-xs" style="color:var(--muted2)" data-i18n="profile_total_label">${t("profile_total_label")}</div>
+                  <div class="font-extrabold text-lg">
+                    ${total.toLocaleString()} ₸
+                  </div>
+                </div>
+
+                ${canCancel ? `
+                  <button class="btn-danger" onclick="cancelOrder(${order.id})" data-i18n="profile_cancel_btn">
+                    ${t("profile_cancel_btn")}
+                  </button>
+                ` : ""}
+              </div>
+            </div>
+
+            <details class="mt-3 card rounded-xl p-3">
+              <summary class="cursor-pointer text-sm font-semibold">
+                ${t("profile_items_label")} (${items.length})
+              </summary>
+              <ul class="mt-2 space-y-1">
+                ${itemsHtml}
+              </ul>
+            </details>
+          `;
+          container.appendChild(card);
+          requestAnimationFrame(()=>card.classList.add("in"));
+
+          App.applyLang(App.currentLang);
+        });
+      }
+
+      async function cancelOrder(id) {
+        try {
+          const res = await fetch(`${API_URL}/orders/${id}/cancel`, {
+            method: "DELETE",
+            headers: { "Authorization": "Bearer " + App.getToken() }
+          });
+          const data = await res.json().catch(()=> ({}));
+
+          if (res.ok) {
+            App.showToast(t("profile_order_cancelled"), "success");
+            await loadOrders();
+          } else {
+            App.showToast(data.error || t("profile_cancel_failed"), "error");
+          }
+        } catch (err) {
+          console.error(err);
+          App.showToast(t("profile_cancel_failed"), "error");
+        }
+      }
+      window.cancelOrder = cancelOrder;
+
+      qs("#order-filter").addEventListener("change", renderOrders);
+
+       App.initMeshParallax(); 
+
+      // Scroll to top
+      const toTop = qs("#to-top");
+      window.addEventListener("scroll", () => toTop.classList.toggle("hidden", window.scrollY < 600));
+      toTop.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+
+      if (ensureAuth()) {
+        loadProfile();
+        loadOrders();
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title data-i18n="checkout_title"></title>
+
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' }
+  </script>
+</head>
+
+<body class="min-h-screen flex flex-col">
+  <div class="mesh" id="mesh"></div>
+  <div class="noise"></div>
+
+  <div id="app-navbar"></div>
+
+  <main class="flex-1 container mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-8 space-y-6">
+
+    <section class="reveal flex items-center justify-between gap-3">
+      <div>
+        <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight" data-i18n="checkout_title"></h1>
+        <p class="text-sm md:text-base" style="color:var(--muted2)" data-i18n="checkout_subtitle"></p>
+      </div>
+
+      <a href="cart.html" class="btn-ghost text-sm" data-i18n="checkout_back_to_cart"></a>
+    </section>
+
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div class="lg:col-span-7 space-y-4 reveal">
+        <div class="panel rounded-2xl p-4 md:p-5 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="badge badge-blue" data-i18n="checkout_step_badge"></span>
+            <span class="font-semibold" data-i18n="checkout_delivery_info"></span>
+          </div>
+          <div class="text-sm" style="color:var(--muted2)" data-i18n="checkout_required_note"></div>
+        </div>
+
+        <form id="checkout-form" class="panel rounded-2xl p-4 md:p-5 shadow-xl space-y-4">
+          <div>
+            <label class="block text-xs mb-1" style="color:var(--muted2)" data-i18n="checkout_address_label"></label>
+            <input id="address" type="text" class="inp"
+                   data-i18n-placeholder="checkout_address_ph"
+                   placeholder="e.g. 123 Main St, Almaty">
+            <p id="err-address" class="text-xs mt-1 text-red-400 hidden"
+               data-i18n="checkout_address_err"></p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs mb-1" style="color:var(--muted2)" data-i18n="checkout_phone_label"></label>
+              <input id="phone" type="text" class="inp"
+                     data-i18n-placeholder="checkout_phone_ph"
+                     placeholder="+7 777 123 45 67">
+              <p id="err-phone" class="text-xs mt-1 text-red-400 hidden"
+                 data-i18n="checkout_phone_err"></p>
+            </div>
+
+            <div>
+              <label class="block text-xs mb-1" style="color:var(--muted2)" data-i18n="checkout_short_note_label"></label>
+              <input id="comment-short" type="text" class="inp"
+                     data-i18n-placeholder="checkout_short_note_ph"
+                     placeholder="Door code, floor, etc.">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs mb-1" style="color:var(--muted2)" data-i18n="checkout_comment_label"></label>
+            <textarea id="comment" class="inp min-h-[110px]" rows="4"
+                      data-i18n-placeholder="checkout_comment_ph"
+                      placeholder="Any delivery instructions?"></textarea>
+          </div>
+
+          <button type="submit" class="btn-primary w-full" id="place-order-btn" data-i18n="checkout_place_order"></button>
+
+          <p class="text-xs text-center" style="color:var(--muted2)" data-i18n="checkout_terms_note"></p>
+        </form>
+      </div>
+
+      <aside class="lg:col-span-5 h-fit sticky top-20 space-y-4 reveal">
+        <div class="panel rounded-2xl p-4 md:p-5 shadow-xl">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-bold" data-i18n="checkout_summary_title"></h2>
+            <span class="badge badge-green" id="items-count" data-i18n="checkout_items_count"></span>
+          </div>
+
+          <div id="items-summary" class="space-y-3"></div>
+
+          <div class="h-px my-4" style="background:var(--panelBorder)"></div>
+
+          <div class="space-y-2 text-sm" style="color:var(--muted)">
+            <div class="flex justify-between">
+              <span data-i18n="checkout_subtotal"></span>
+              <span id="subtotal">—</span>
+            </div>
+            <div class="flex justify-between">
+              <span data-i18n="checkout_delivery"></span>
+              <span id="delivery" data-i18n="checkout_delivery_free"></span>
+            </div>
+            <div class="flex justify-between">
+              <span data-i18n="checkout_tax"></span>
+              <span id="tax">—</span>
+            </div>
+          </div>
+
+          <div class="h-px my-4" style="background:var(--panelBorder)"></div>
+
+          <div class="flex justify-between text-lg font-extrabold">
+            <span data-i18n="checkout_total"></span>
+            <span id="grand-total"></span>
+          </div>
+        </div>
+
+        <div id="empty-message" class="hidden panel rounded-2xl p-6 text-center text-sm"
+             style="color:var(--muted)">
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <div id="app-footer"></div>
+
+  <div id="app-ai"></div>
+
+  <button id="to-top" class="fixed bottom-6 left-6 w-12 h-12 rounded-2xl grid place-items-center text-xl shadow-lg hidden"
+    style="background:var(--btnPrimaryBg); color:var(--btnPrimaryFg)">↑</button>
+
+  <script src="utils.js"></script>
+
+  <script>
+    (async function () {
+      await App.initCommon({ i18nUrl: "i18n.json" });
+
+      const API_URL = App.API_URL;
+      const qs = App.qs;
+      const t = App.t;
+
+      function ensureAuth() {
+        if (!App.getToken()) {
+          App.showToast(t("checkout_order_failed") || "", "error");
+          setTimeout(() => { location.href = "login.html"; }, 900);
+          return false;
+        }
+        return true;
+      }
+
+      async function fetchCart(){
+        const token = App.getToken();
+        const res = await fetch(`${API_URL}/cart`, {
+          headers: { "Authorization": "Bearer " + token }
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || t("checkout_cart_load_failed"));
+        return json.data || [];
+      }
+
+      async function loadSummary() {
+        const itemsContainer = qs("#items-summary");
+        const emptyMsg = qs("#empty-message");
+        const form = qs("#checkout-form");
+
+        itemsContainer.innerHTML = "";
+
+        itemsContainer.innerHTML = Array.from({length: 3}).map(()=>`
+          <div class="card rounded-xl p-3 flex items-center justify-between animate-pulse">
+            <div class="h-3 w-2/3 rounded" style="background:var(--btnGhostBg)"></div>
+            <div class="h-3 w-14 rounded" style="background:var(--btnGhostBg)"></div>
+          </div>
+        `).join("");
+
+        let cartItems = [];
+        try {
+          cartItems = await fetchCart();
+        } catch(e){
+          console.error(e);
+          App.showToast(t("checkout_cart_load_failed"), "error");
+          cartItems = [];
+        }
+
+        itemsContainer.innerHTML = "";
+
+        if (cartItems.length === 0) {
+          qs("#grand-total").textContent = "0 ₸";
+          qs("#subtotal").textContent = "0 ₸";
+          qs("#tax").textContent = "0 ₸";
+          qs("#items-count").textContent = `0 ${t("checkout_items_count")}`;
+
+          emptyMsg.innerHTML = `
+            <div class="text-5xl mb-2">🛒</div>
+            <div class="text-lg font-bold mb-1" data-i18n="checkout_empty_title"></div>
+            <div class="text-sm mb-4" style="color:var(--muted2)" data-i18n="checkout_empty_sub">
+            </div>
+            <a href="index.html" class="btn-primary inline-block" data-i18n="checkout_browse_catalog">
+            </a>
+          `;
+          emptyMsg.classList.remove("hidden");
+          form.classList.add("hidden");
+          App.applyLang(App.currentLang);
+          return;
+        } else {
+          emptyMsg.classList.add("hidden");
+          form.classList.remove("hidden");
+        }
+
+        let subtotal = 0;
+        let totalItems = 0;
+
+        for (const ci of cartItems) {
+          const book = ci.book;
+          if (!book) continue;
+
+          const line = Number(book.price) * ci.quantity;
+          subtotal += line;
+          totalItems += ci.quantity;
+
+          const div = document.createElement("div");
+          div.className = "card rounded-xl p-3 flex items-center justify-between text-sm reveal";
+          div.innerHTML = `
+            <div class="min-w-0 pr-3">
+              <div class="font-semibold line-clamp-2">${book.title}</div>
+              <div class="text-xs mt-0.5" style="color:var(--muted2)">
+                ${book.author} · x${ci.quantity}
+              </div>
+            </div>
+            <div class="font-bold whitespace-nowrap">
+              ${Number(line).toLocaleString()} ₸
+            </div>
+          `;
+          itemsContainer.appendChild(div);
+        }
+
+        const tax = subtotal * 0.05;
+        const total = subtotal + tax;
+
+        qs("#subtotal").textContent = `${subtotal.toLocaleString()} ₸`;
+        qs("#tax").textContent = `${tax.toLocaleString()} ₸`;
+        qs("#grand-total").textContent = `${total.toLocaleString()} ₸`;
+        qs("#items-count").textContent = `${totalItems} ${t("checkout_items_count")}`;
+
+        requestAnimationFrame(()=>{
+          itemsContainer.querySelectorAll(".reveal").forEach(el=>el.classList.add("in"));
+        });
+      }
+
+      function setError(id, isError, msg){
+        const input = qs("#"+id);
+        const err = qs("#err-"+id);
+        input.classList.toggle("error", isError);
+        if (err){
+          err.textContent = msg || err.textContent;
+          err.classList.toggle("hidden", !isError);
+        }
+      }
+
+      function validateForm(){
+        const address = qs("#address").value.trim();
+        const phone = qs("#phone").value.trim();
+
+        let ok = true;
+        if (!address){
+          setError("address", true, t("checkout_address_err"));
+          ok = false;
+        } else setError("address", false);
+
+        const digits = phone.replace(/\D/g,"");
+        if (!phone || digits.length < 8){
+          setError("phone", true, t("checkout_phone_err"));
+          ok = false;
+        } else setError("phone", false);
+
+        return ok;
+      }
+
+      qs("#address").addEventListener("input", ()=>setError("address", false));
+      qs("#phone").addEventListener("input", ()=>setError("phone", false));
+
+      qs("#checkout-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (!validateForm()) return;
+
+        const btn = qs("#place-order-btn");
+        btn.disabled = true;
+        btn.textContent = t("checkout_placing");
+
+        try {
+          const cartItems = await fetchCart();
+          if (cartItems.length === 0) {
+            App.showToast(t("checkout_cart_empty_toast"), "error");
+            return;
+          }
+
+          const items = cartItems.map(ci => ({ bookId: ci.bookId, quantity: ci.quantity }));
+          const body = {
+            items,
+            shippingAddress: qs("#address").value.trim(),
+            phone: qs("#phone").value.trim(),
+            comment: (qs("#comment-short").value.trim() + " " + qs("#comment").value.trim()).trim()
+          };
+
+          const res = await fetch(`${API_URL}/orders`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer " + App.getToken()
+            },
+            body: JSON.stringify(body)
+          });
+
+          const data = await res.json().catch(()=>({}));
+
+          if (res.ok) {
+            try {
+              await fetch(`${API_URL}/cart`, {
+                method: "DELETE",
+                headers: { "Authorization": "Bearer " + App.getToken() }
+              });
+            } catch {}
+
+            App.showToast(t("checkout_order_success"), "success");
+            setTimeout(() => { location.href = "profile.html"; }, 1100);
+          } else {
+            App.showToast(data.error || t("checkout_order_failed"), "error");
+          }
+        } catch (err) {
+          console.error(err);
+          App.showToast(err.message || t("checkout_order_failed"), "error");
+        } finally {
+          btn.disabled = false;
+          btn.textContent = t("checkout_place_order");
+          App.updateCartCount();
+          loadSummary();
+        }
+      });
+      const toTop = qs("#to-top");
+      window.addEventListener("scroll", () => toTop.classList.toggle("hidden", window.scrollY < 600));
+      toTop.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+
+      if (ensureAuth()) loadSummary();
+    })();
+  </script>
+</body>
+</html>

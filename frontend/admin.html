@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-i18n="admin_title">Admin Panel - Book Marketplace</title>
+
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' }
+  </script>
+</head>
+
+<body class="min-h-screen flex flex-col">
+  <div class="mesh" id="mesh"></div>
+  <div class="noise"></div>
+  <div id="app-navbar"></div>
+
+  <!-- TOAST -->
+  <div id="toast" class="fixed bottom-4 right-4 z-50 hidden text-white px-4 py-2 rounded-lg shadow"></div>
+
+  <!-- MAIN -->
+  <main class="flex-1 container mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-8 space-y-8">
+
+    <!-- Header -->
+    <section class="reveal flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div>
+        <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight" data-i18n="admin_dashboard">
+          Admin Dashboard
+        </h1>
+        <p class="text-sm md:text-base" style="color:var(--muted2)" data-i18n="admin_sub">
+          Manage books, categories, and orders.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-3 sm:grid-cols-3 gap-2 w-full md:w-auto">
+        <div class="card rounded-xl px-2 py-2 sm:px-3 sm:py-2 text-center">
+          <div class="text-lg font-extrabold" id="stat-books">—</div>
+          <div class="text-xs" style="color:var(--muted2)" data-i18n="admin_stat_books">Books</div>
+        </div>
+        <div class="card rounded-xl px-2 py-2 sm:px-3 sm:py-2 text-center">
+          <div class="text-lg font-extrabold" id="stat-cats">—</div>
+          <div class="text-xs" style="color:var(--muted2)" data-i18n="admin_stat_categories">Categories</div>
+        </div>
+        <div class="card rounded-xl px-2 py-2 sm:px-3 sm:py-2 text-center">
+          <div class="text-lg font-extrabold" id="stat-orders">—</div>
+          <div class="text-xs" style="color:var(--muted2)" data-i18n="admin_stat_orders">Orders</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Google Books Search -->
+    <div class="panel rounded-xl p-4 space-y-3 reveal">
+      <h2 class="font-bold text-lg" data-i18n="admin_google_search_title">
+        Search Books (Google)
+      </h2>
+
+      <div class="flex gap-2 flex-col sm:flex-row">
+        <input id="google-search-input"
+               class="inp flex-1"
+               data-i18n-placeholder="admin_google_placeholder"
+               placeholder="Enter title, author, or ISBN">
+
+        <button id="google-search-btn"
+                class="btn-primary w-full sm:w-auto"
+                data-i18n="admin_google_search_btn">
+          Search
+        </button>
+      </div>
+
+      <div id="google-results" class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3"></div>
+    </div>
+
+    <section class="reveal panel rounded-2xl p-2 flex flex-wrap sm:flex-nowrap gap-2 text-sm font-semibold">
+      <button class="tab btn-ghost flex-1" data-tab="books" data-i18n="admin_tabs_books">Books</button>
+      <button class="tab btn-ghost flex-1" data-tab="categories" data-i18n="admin_tabs_categories">Categories</button>
+      <button class="tab btn-ghost flex-1" data-tab="orders" data-i18n="admin_tabs_orders">Orders</button>
+    </section>
+
+    <!-- BOOKS TAB -->
+    <section id="tab-books" class="tab-pane space-y-5 reveal">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+        <form id="book-form"
+              class="panel rounded-2xl p-4 md:p-5 shadow-xl lg:col-span-1 space-y-4 order-1 lg:order-none">
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-bold" data-i18n="admin_book_form_title">Add / Edit Book</h2>
+            <input type="hidden" id="book-id" value="">
+            <input type="hidden" id="book-cover-url" value="">
+          </div>
+
+          <div>
+            <label class="text-xs" style="color:var(--muted2)" data-i18n="admin_book_title_label">Title</label>
+            <input id="book-title" type="text" class="inp mt-1" required>
+          </div>
+
+          <div>
+            <label class="text-xs" style="color:var(--muted2)" data-i18n="admin_book_author_label">Author</label>
+            <input id="book-author" type="text" class="inp mt-1" required>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs" style="color:var(--muted2)" data-i18n="admin_book_price_label">Price</label>
+              <input id="book-price" type="number" step="0.01" class="inp mt-1" required>
+            </div>
+            <div>
+              <label class="text-xs" style="color:var(--muted2)" data-i18n="admin_book_stock_label">Stock</label>
+              <input id="book-stock" type="number" class="inp mt-1" required>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-xs" style="color:var(--muted2)" data-i18n="admin_book_category_label">Category</label>
+            <select id="book-category" class="inp mt-1">
+              <option value="" data-i18n="admin_none">None</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="text-xs" style="color:var(--muted2)" data-i18n="admin_book_cover_label">Cover Image</label>
+
+            <label class="mt-1 block rounded-xl border border-dashed p-3 cursor-pointer text-sm text-center"
+                   style="border-color:var(--panelBorder); background:var(--btnGhostBg); color:var(--muted)">
+              <input id="book-cover" type="file" accept="image/*" class="hidden">
+              <span id="cover-label" data-i18n="admin_book_cover_upload">Click to upload cover</span>
+            </label>
+
+            <div class="mt-2 flex items-center gap-3">
+              <img id="cover-preview"
+                   src=""
+                   alt="cover preview"
+                   class="w-20 h-28 rounded-lg object-cover hidden border"
+                   style="border-color:var(--panelBorder);" />
+              <div class="text-xs" style="color:var(--muted2)" data-i18n="admin_book_cover_hint">
+                If you pick from Google, cover will be auto-filled.
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-xs" style="color:var(--muted2)" data-i18n="admin_book_desc_label">Description</label>
+            <textarea id="book-description" class="inp mt-1 min-h-[100px]" rows="4"></textarea>
+          </div>
+
+          <div class="flex gap-2">
+            <button type="submit" class="btn-primary flex-1" data-i18n="admin_book_save_btn">Save Book</button>
+            <button type="button" id="reset-book-form" class="btn-ghost" data-i18n="admin_book_reset_btn">Reset</button>
+          </div>
+        </form>
+
+        <div class="lg:col-span-2 space-y-3 order-2 lg:order-none">
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-bold" data-i18n="admin_books_list_title">Books List</h3>
+            <div class="text-sm" style="color:var(--muted2)" data-i18n="admin_books_list_sub">
+              Edit or delete items
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th class="text-left" data-i18n="admin_table_id">ID</th>
+                  <th class="text-left" data-i18n="admin_table_title">Title</th>
+                  <th class="text-left" data-i18n="admin_table_author">Author</th>
+                  <th class="text-left" data-i18n="admin_table_price">Price</th>
+                  <th class="text-left" data-i18n="admin_table_stock">Stock</th>
+                  <th class="text-left" data-i18n="admin_table_category">Category</th>
+                  <th class="text-left" data-i18n="admin_table_actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="books-table"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-categories" class="tab-pane hidden space-y-5 reveal">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <form id="category-form" class="panel rounded-2xl p-4 md:p-5 shadow-xl space-y-3">
+          <h2 class="text-lg font-bold" data-i18n="admin_category_form_title">Add Category</h2>
+          <div>
+            <label class="text-xs" style="color:var(--muted2)" data-i18n="admin_category_name_label">
+              Category Name
+            </label>
+            <input id="category-name" type="text" class="inp mt-1" required>
+          </div>
+          <button type="submit" class="btn-primary w-full" data-i18n="admin_category_add_btn">
+            Add Category
+          </button>
+        </form>
+
+        <div class="lg:col-span-2 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-bold" data-i18n="admin_categories_title">Categories</h3>
+            <div class="text-sm" style="color:var(--muted2)" data-i18n="admin_categories_sub">
+              Used for catalog filters
+            </div>
+          </div>
+          <div class="panel rounded-2xl p-4 md:p-5 shadow-xl">
+            <ul id="categories-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2"></ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-orders" class="tab-pane hidden space-y-5 reveal">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-bold" data-i18n="admin_orders_title">Orders</h2>
+        <div class="text-sm" style="color:var(--muted2)" data-i18n="admin_orders_sub">
+          Update status and view items
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="text-left" data-i18n="admin_table_id">ID</th>
+              <th class="text-left" data-i18n="admin_orders_table_user">User</th>
+              <th class="text-left" data-i18n="admin_orders_table_total">Total</th>
+              <th class="text-left" data-i18n="admin_orders_table_status">Status</th>
+              <th class="text-left" data-i18n="admin_orders_table_created">Created</th>
+              <th class="text-left" data-i18n="admin_orders_table_items">Items</th>
+            </tr>
+          </thead>
+          <tbody id="orders-table"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <div id="app-footer"></div>
+
+  <div id="app-ai"></div>
+
+  <script src="utils.js"></script>
+
+
+  <script>
+
+(async function () {
+      await App.initCommon({ i18nUrl: "i18n.json" });
+
+      const API_URL = App.API_URL;
+      const qs = App.qs;
+      const t = App.t;
+  
+
+      /*AUTH*/
+      function ensureAdmin() {
+        const token = App.getToken();
+        if (!token) { location.href = 'login.html'; return false; }
+        const payload = App.parseJwt(token);
+        if (!payload || payload.role !== 'ADMIN') {
+          App.showToast(t("admin_not_authorized"), "error");
+          location.href = 'index.html';
+          return false;
+        }
+        return true;
+      }
+
+      /*TABS*/
+      const tabs = document.querySelectorAll(".tab");
+      const panes = {
+        books: qs("#tab-books"),
+        categories: qs("#tab-categories"),
+        orders: qs("#tab-orders"),
+      };
+      function setTab(name){
+        Object.entries(panes).forEach(([k, el]) => el.classList.toggle("hidden", k!==name));
+        tabs.forEach(btn=>{
+          const active = btn.dataset.tab === name;
+          btn.style.opacity = active ? "1" : ".7";
+        });
+      }
+      tabs.forEach(btn=>btn.addEventListener("click", ()=>setTab(btn.dataset.tab)));
+
+      /*BOOKS*/
+      async function loadBooks() {
+        try {
+          const res = await fetch(`${API_URL}/books`);
+          const data = await res.json();
+
+          const tbody = qs('#books-table');
+          tbody.innerHTML = '';
+          qs("#stat-books").textContent = data.data.length;
+
+          data.data.forEach(book => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${book.id}</td>
+              <td class="font-semibold">${book.title}</td>
+              <td>${book.author}</td>
+              <td>${Number(book.price).toFixed(2)} ₸</td>
+              <td>${book.stock}</td>
+              <td>${book.category ? book.category.name : ''}</td>
+              <td class="space-x-2">
+                <button class="btn-link" onclick="editBook(${book.id})">${t("admin_edit")}</button>
+                <button class="btn-danger" onclick="deleteBook(${book.id})">${t("admin_delete")}</button>
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
+
+          App.applyLang(App.currentLang);
+        } catch (err) {
+          console.error(err);
+          App.showToast(t("admin_toast_books_failed"), "error");
+        }
+      }
+
+      async function loadCategories() {
+        try {
+          const res = await fetch(`${API_URL}/categories`);
+          const data = await res.json();
+          qs("#stat-cats").textContent = data.data.length;
+
+          const select = qs('#book-category');
+          const list = qs('#categories-list');
+          select.innerHTML = `<option value="">${t("admin_none")}</option>`;
+          list.innerHTML = '';
+
+          data.data.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat.id;
+            option.textContent = cat.name;
+            select.appendChild(option);
+
+            const li = document.createElement('li');
+            li.className = "card rounded-xl px-3 py-2 text-sm flex items-center justify-between gap-2";
+
+            li.innerHTML = `
+              <span class="truncate">${cat.name}</span>
+              <button class="btn-danger !py-1 !px-2 text-xs"
+                      onclick="deleteCategory(${cat.id})">
+                ${t("admin_delete") || "Delete"}
+              </button>
+            `;
+
+            list.appendChild(li);
+          });
+
+          App.applyLang(App.currentLang);
+        } catch (err) {
+          console.error(err);
+          App.showToast(t("admin_toast_cats_failed"), "error");
+        }
+      }
+
+      function setPreview(src) {
+        const img = qs("#cover-preview");
+        if (!src) { img.src=""; img.classList.add("hidden"); return; }
+        img.src = src;
+        img.classList.remove("hidden");
+      }
+
+      qs('#book-cover').addEventListener('change', (e)=>{
+        const file = e.target.files[0];
+        qs('#cover-label').textContent = file ? file.name : t("admin_book_cover_upload");
+
+        if (file) {
+          qs('#book-cover-url').value = '';
+          setPreview(URL.createObjectURL(file));
+        } else setPreview('');
+        App.applyLang(App.currentLang);
+      });
+
+      qs('#reset-book-form').addEventListener('click', () => {
+        qs('#book-form').reset();
+        qs('#book-id').value = '';
+        qs('#book-cover-url').value = '';
+        qs('#cover-label').textContent = t("admin_book_cover_upload");
+        setPreview('');
+        App.applyLang(App.currentLang);
+      });
+
+      qs('#book-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const id = qs('#book-id').value;
+        const title = qs('#book-title').value.trim();
+        const author = qs('#book-author').value.trim();
+        const price = qs('#book-price').value;
+        const stock = qs('#book-stock').value;
+        const categoryId = qs('#book-category').value;
+        const description = qs('#book-description').value.trim();
+        const coverFile = qs('#book-cover').files[0];
+        const coverUrlFromGoogle = qs('#book-cover-url').value.trim();
+
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('author', author);
+        formData.append('price', price);
+        formData.append('stock', stock);
+        if (categoryId) formData.append('categoryId', categoryId);
+        if (description) formData.append('description', description);
+
+        if (coverFile) formData.append('cover', coverFile);
+        if (!coverFile && coverUrlFromGoogle) formData.append('coverUrl', coverUrlFromGoogle);
+
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `${API_URL}/books/${id}` : `${API_URL}/books`;
+
+        try {
+          const res = await fetch(url, {
+            method,
+            headers: { 'Authorization': 'Bearer ' + App.getToken() },
+            body: formData
+          });
+
+          const data = await res.json();
+          if (res.ok) {
+            App.showToast(t("admin_toast_book_saved"), 'success');
+            qs('#book-form').reset();
+            qs('#book-id').value = '';
+            qs('#book-cover-url').value = '';
+            qs('#cover-label').textContent = t("admin_book_cover_upload");
+            setPreview('');
+            loadBooks();
+          } else {
+            App.showToast(data.error || t("admin_toast_save_failed"), 'error');
+          }
+        } catch (err) {
+          console.error(err);
+          App.showToast(t("admin_toast_save_failed"), 'error');
+        }
+      });
+
+      async function editBook(id) {
+        try {
+          const res = await fetch(`${API_URL}/books/${id}`);
+          const data = await res.json();
+          if (!res.ok) return App.showToast(data.error || "Error", "error");
+
+          const book = data.data;
+          qs('#book-id').value = book.id;
+          qs('#book-title').value = book.title;
+          qs('#book-author').value = book.author;
+          qs('#book-price').value = book.price;
+          qs('#book-stock').value = book.stock;
+          qs('#book-category').value = book.categoryId || '';
+          qs('#book-description').value = book.description || '';
+
+          qs('#book-cover-url').value = '';
+          qs('#book-cover').value = '';
+          qs('#cover-label').textContent = t("admin_book_cover_upload");
+          setPreview(book.coverUrl || '');
+
+          setTab("books");
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          App.applyLang(App.currentLang);
+        } catch (err) { console.error(err); }
+      }
+
+      window.editBook = editBook;
+
+      async function deleteBook(id) {
+        const yes = await App.confirm({
+          title: t("admin_book_delete_confirm_title") || "Delete book?",
+          text: t("admin_book_delete_confirm_text") || "This action cannot be undone.",
+          okText: t("admin_delete") || "Delete",
+          cancelText: t("cancel") || "Cancel"
+        });
+
+        if (!yes) return;
+
+        try {
+          const res = await fetch(`${API_URL}/books/${id}`, {
+            method: "DELETE",
+            headers: { "Authorization": "Bearer " + App.getToken() }
+          });
+          const data = await res.json().catch(()=>({}));
+
+          if (res.ok) {
+            App.showToast(t("admin_toast_book_deleted"), "success");
+            loadBooks();
+          } else {
+            App.showToast(data.error || t("admin_toast_delete_failed"), "error");
+          }
+        } catch (err) {
+          console.error(err);
+          App.showToast(t("admin_toast_delete_failed"), "error");
+        }
+      }
+
+      window.deleteBook = deleteBook;
+
+      async function deleteCategory(id){
+        const sure = await App.confirm({
+          title: t("admin_category_delete_confirm_title") || "Delete category?",
+          okText: t("admin_delete") || "Delete",
+          cancelText: t("admin_cancel") || "Cancel"
+        });
+
+        if (!sure) return;
+
+        try {
+          const res = await fetch(`${API_URL}/categories/${id}`, {
+            method: "DELETE",
+            headers: { "Authorization": "Bearer " + App.getToken() }
+          });
+
+          const data = await res.json().catch(()=>({}));
+          if (!res.ok) throw new Error(data.error || "Delete failed");
+
+          App.showToast(t("admin_toast_category_deleted") || "Category deleted", "success");
+          loadCategories();
+          loadBooks();
+        } catch (e){
+          console.error(e);
+          App.showToast(e.message || (t("admin_toast_delete_failed") || "Failed to delete"), "error");
+        }
+      }
+
+      window.deleteCategory = deleteCategory;
+
+      /*GOOGLE SEARCH*/
+      qs('#google-search-btn').addEventListener('click', async () => {
+        
+        const q = qs('#google-search-input').value.trim();
+        if (!q) return;
+        const container = qs('#google-results');
+        container.innerHTML = `<div class="text-sm" style="color:var(--muted)">${t("admin_google_loading")}</div>`;
+
+        try {
+          const res = await fetch(`${API_URL}/books/search?q=${encodeURIComponent(q)}`, {
+            headers: { 'Authorization': 'Bearer ' + App.getToken() }
+          });
+          const data = await res.json();
+          if (!res.ok) return App.showToast(data.error || t("admin_toast_search_failed"), 'error');
+
+          if (!data.books.length) {
+            container.innerHTML = `<div class="text-sm" style="color:var(--muted)">${t("admin_google_no_results")}</div>`;
+            return;
+          }
+
+          container.innerHTML = '';
+          data.books.forEach(book => {
+            const div = document.createElement('div');
+            div.className = 'card p-3 rounded-xl space-y-2';
+            div.innerHTML = `
+            <div class="flex gap-3">
+              ${book.image ? `<img src="${book.image}" class="w-16 h-20 object-cover rounded-lg">` : ''}
+              <div class="flex-1">
+                <div class="font-semibold">${book.title}</div>
+                <div class="text-sm" style="color:var(--muted2)">${(book.authors || []).join(', ')}</div>
+                <div class="text-xs" style="color:var(--muted2)">${book.publishedDate || ''}</div>
+              </div>
+            </div>
+            <div class="text-sm line-clamp-3" style="color:var(--muted)">
+              ${book.description || '—'}
+            </div>
+            <button class="btn-ghost w-full">
+              ${t("admin_insert_to_form")}
+            </button>
+          `;
+
+          div.querySelector("button").addEventListener("click", () => fillFormFromGoogle(book));
+          container.appendChild(div);
+          });
+
+          App.applyLang(App.currentLang);
+        } catch (err) {
+          console.error(err);
+          App.showToast(t("admin_toast_search_failed"), 'error');
+        }
+      });
+
+      function fillFormFromGoogle(book) {
+      qs('#book-title').value = book.title || '';
+      qs('#book-author').value = (book.authors || []).join(', ') ;
+      qs('#book-description').value = book.description || '';
+
+      qs('#book-cover-url').value = book.image || '';
+      qs('#book-cover').value = '';
+      qs('#cover-label').textContent = book.image
+        ? "Google cover selected"
+        : t("admin_book_cover_upload");
+
+      setPreview(book.image || '');
+
+     
+      qs('#google-results').innerHTML = '';
+      qs('#google-search-input').value = ''; 
+
+      App.showToast(t("admin_toast_form_filled"), 'success');
+      setTab('books');
+      App.applyLang(App.currentLang);
+    }
+
+
+      /*CATEGORIES*/
+      qs('#category-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = qs('#category-name').value.trim();
+        if (!name) return;
+        try {
+          const res = await fetch(`${API_URL}/categories`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + App.getToken()
+            },
+            body: JSON.stringify({ name })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            App.showToast(t("admin_toast_category_added"), 'success');
+            qs('#category-form').reset();
+            loadCategories();
+          } else {
+            App.showToast(data.error || t("admin_toast_category_failed"), 'error');
+          }
+        } catch (err) {
+          console.error(err);
+          App.showToast(t("admin_toast_category_failed"), 'error');
+        }
+      });
+
+      /*ORDERS*/
+      async function loadOrders() {
+        try {
+          const res = await fetch(`${API_URL}/orders`, {
+            headers: { 'Authorization': 'Bearer ' + App.getToken() }
+          });
+          const data = await res.json();
+          if (!res.ok) return App.showToast(data.error || t("admin_toast_orders_failed"), 'error');
+
+          const orders = data.data;
+          qs("#stat-orders").textContent = orders.length;
+
+          const tbody = qs('#orders-table');
+          tbody.innerHTML = '';
+
+          orders.forEach(order => {
+            const tr = document.createElement('tr');
+            const statusOptions = ['PENDING','PAID','SHIPPED','CANCELLED']
+              .map(st => `<option value="${st}" ${order.status===st?'selected':''}>${st}</option>`).join('');
+
+            tr.innerHTML = `
+              <td>${order.id}</td>
+              <td class="min-w-[220px]">
+                <div class="font-semibold">${order.user.name}</div>
+                <div class="text-xs" style="color:var(--muted2)">${order.user.email}</div>
+              </td>
+              <td>${Number(order.totalPrice).toFixed(2)} ₸</td>
+              <td>
+                <div class="flex items-center gap-2">
+                  <span class="badge badge-${order.status}">${order.status}</span>
+                  <select onchange="updateOrderStatus(${order.id}, this.value)"
+                    class="inp !py-1 !px-2 text-xs w-[120px]">
+                    ${statusOptions}
+                  </select>
+                </div>
+              </td>
+              <td class="min-w-[160px]">${new Date(order.createdAt).toLocaleString()}</td>
+              <td>
+                <details class="cursor-pointer">
+                  <summary class="btn-link">${t("admin_items_btn")}</summary>
+                  <ul class="pl-4 list-disc text-sm mt-2">
+                    ${order.items.map(i => `<li>${i.book.title} x ${i.quantity}</li>`).join('')}
+                  </ul>
+                </details>
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
+
+          App.applyLang(App.currentLang);
+        } catch (err) {
+          console.error(err);
+          App.showToast(t("admin_toast_orders_failed"), 'error');
+        }
+      }
+
+      async function updateOrderStatus(id, status) {
+        try {
+          const res = await fetch(`${API_URL}/orders/${id}/status`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + App.getToken()
+            },
+            body: JSON.stringify({ status })
+          });
+          const data = await res.json();
+          if (!res.ok) App.showToast(data.error || t("admin_toast_status_failed"), 'error');
+          else {
+            App.showToast(t("admin_toast_status_updated"), 'success');
+            loadOrders();
+          }
+        } catch (err) {
+          console.error(err);
+          App.showToast(t("admin_toast_status_failed"), 'error');
+        }
+      }
+
+
+      /*Reveal observer*/
+      const io = new IntersectionObserver((entries)=>{
+        entries.forEach(e=>{ if(e.isIntersecting) e.target.classList.add("in"); });
+      }, {threshold:.12});
+      document.querySelectorAll(".reveal").forEach(el=>io.observe(el));
+
+
+      App.initMeshParallax(); 
+
+
+      /*Init*/
+      if (!ensureAdmin()) return;
+      setTab("books");
+
+      loadCategories();
+      loadBooks();
+      loadOrders();
+    })();
+  </script>
+</body>
+</html>
